@@ -4,6 +4,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "battery.h"
 
 static int get_max_battery(void)
@@ -40,9 +41,9 @@ static int get_remaining_battery(void)
 	return remaining_capacity;
 }
 
-static int get_battery_percent(void)
+static int get_battery_percent(int remaining, int max)
 {
-	return (int) ((float) get_remaining_battery() / (float) get_max_battery() * 100);
+	return (int) ((float) remaining / (float) max * 100);
 }
 
 static enum chargestate get_battery_state(void)
@@ -54,7 +55,7 @@ static enum chargestate get_battery_state(void)
 	while (fgets(thisline, 100, batt_state))
 		if (!strncmp(thisline, "charging state", 14))
 		{
-			sscanf(thisline+25, "%s%*[^\n]", &chargingstate);
+			sscanf(thisline+25, "%s%*[^\n]", chargingstate);
 			break;
 		}
 	
@@ -64,7 +65,7 @@ static enum chargestate get_battery_state(void)
 		return charging;
 	else if (!strcmp(chargingstate, "charged"))
 		return charged;
-	else if (!strcmp(chargingstate, "discharging"))
+	else
 		return discharging;
 }
 
@@ -85,11 +86,9 @@ static int get_rate(void)
 	return rate;
 }
 
-static int get_seconds_remaining(void)
+static int get_seconds_remaining(int rate, int remaining)
 {
-	float remaining  = (float) get_remaining_battery();
-	float rate       = (float) get_rate();
-	int seconds_left = (int) (remaining * 60.0 * 60.0 / rate);
+	int seconds_left = (int) ((float) remaining * 3600.0 / (float) rate);
 	return seconds_left;
 }
 
@@ -97,11 +96,12 @@ Battery init_battery(void)
 {
 	Battery newbattery = (Battery) malloc(sizeof(struct battery));
 
-	newbattery->remaining  = get_remaining_battery();
-	newbattery->max        = get_max_battery();
-	newbattery->percent    = get_battery_percent();
-	newbattery->state      = get_battery_state();
-	newbattery->seconds_remaining = get_seconds_remaining();
+	newbattery->remaining         = get_remaining_battery();
+	newbattery->max               = get_max_battery();
+	newbattery->percent           = get_battery_percent(newbattery->remaining, newbattery->max);
+	newbattery->rate              = get_rate();
+	newbattery->seconds_remaining = get_seconds_remaining(newbattery->rate, newbattery->remaining);
+	newbattery->state             = get_battery_state();
 	
 	return newbattery;
 }

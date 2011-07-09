@@ -12,19 +12,19 @@
 #include <time.h>
 #include <X11/Xlib.h>
 
+#include "battery.h"
+
 #define UPDATE_INTERVAL 90
 
 static Display * display;
 
-static void
-set_status(char * status)
+static void set_status(char * status)
 {
 	XStoreName(display, DefaultRootWindow(display), status);
 	XSync(display, False);
 }
 
-static char *
-get_day(int weekday)
+static char * get_day(int weekday)
 {
 	switch (weekday)
 	{
@@ -39,8 +39,7 @@ get_day(int weekday)
 	}
 }
 
-static char *
-get_month(int month)
+static char * get_month(int month)
 {
 	switch (month)
 	{
@@ -60,8 +59,7 @@ get_month(int month)
 	}
 }
 
-static char *
-get_time(void)
+static char * get_time(void)
 {
 	time_t epoch_time = time(NULL);
 	struct tm * time = localtime(&epoch_time);
@@ -77,8 +75,37 @@ get_time(void)
 	return strdup(str_time);
 }
 
-int
-main(void)
+static char * secs2min_str(int seconds)
+{
+	if (seconds <= 0) return "0";
+
+	int hours = seconds / 3600;
+	int seconds_after_hours = seconds % 3600;
+	int mins  = seconds_after_hours / 60;
+
+	/* 6 characters allows for three digit hours. That's some battery you have there... */
+	char timestring[7];
+	sprintf(timestring, "%d:%02d", hours, mins);
+	return strdup(timestring);
+}
+
+static char * get_nice_batt_time(enum chargestate state, int seconds_remaining)
+{
+	switch (state)
+	{
+		case charging:
+		case charged:
+			return strdup("AC"); /* because we are going to be freeing later */
+			break;
+		case discharging:
+			return secs2min_str(seconds_remaining);
+			break;
+		default:
+			return "??";
+	}
+}
+
+int main(void)
 {
 	char status[100];
 
@@ -92,9 +119,19 @@ main(void)
 	/* every interval update the status */
 	for (;;sleep(UPDATE_INTERVAL))
 	{
-		char * time = get_time();
-		char * battery = get_battery_percent();
-		sprintf(status, "%s | B: %s%% (%s) | %s", "music", battery, "remaining_time", time);
+		char * time         = get_time();
+		Battery battery     = init_battery();
+		char * battery_time = get_nice_batt_time(battery->state, battery->seconds_remaining);
+
+		sprintf(status, "%s | B: %d%% (%s) | %s", "music",
+			battery->percent,
+			battery_time,
+			time);
+
 		set_status(status);
+
+		free(time);
+		free(battery);
+		free(battery_time);
 	}
 }

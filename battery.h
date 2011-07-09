@@ -6,6 +6,7 @@ struct battery
 	int remaining;
 	int max;
 	int percent;
+	int rate;
 	int seconds_remaining;
 	enum chargestate state;
 };
