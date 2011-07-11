@@ -13,12 +13,11 @@
 #include <X11/Xlib.h>
 
 #include "battery.h"
+#include "mpdinfo.h"
 
 #define UPDATE_INTERVAL 90
 
-static Display * display;
-
-static void set_status(char * status)
+static void set_status(char * status, Display * display)
 {
 	XStoreName(display, DefaultRootWindow(display), status);
 	XSync(display, False);
@@ -105,33 +104,78 @@ static char * get_nice_batt_time(enum chargestate state, int seconds_remaining)
 	}
 }
 
+static char * get_playing_state_str(enum mpd_playing_state state)
+{
+	switch (state)
+	{
+		case playing:
+			return strdup("playing");
+			break;
+		case paused:
+			return strdup("paused");
+			break;
+		default:
+			return strdup("stopped");
+			break;
+	}
+}
+
+static char * get_mpd_info_str()
+{
+	MPDinfo mpd_info = init_mpdinfo();
+
+	char * playing_state_str = get_playing_state_str(mpd_info->state);
+
+	int size_of_info_str = 
+		strlen(mpd_info->title)   +
+		strlen(mpd_info->artist)  +
+		strlen(playing_state_str) +
+		+ 10;
+	
+	char * mpd_info_str = malloc(size_of_info_str);
+	sprintf(mpd_info_str, "%s by %s [%s] |",
+		mpd_info->title,
+		mpd_info->artist,
+		playing_state_str);
+	
+	free(playing_state_str);
+	free(mpd_info->title);
+	free(mpd_info->artist);
+	free(mpd_info);
+
+	return mpd_info_str;
+}
+
 int main(void)
 {
-	char status[100];
-
-	/* try to open the display */
-	if (!(display = XOpenDisplay(NULL)))
+	int index;
+	for (index = 0; index < 1; index++)//sleep(UPDATE_INTERVAL)) /* every interval update the status */
 	{
-		fprintf(stderr, "dwmstatus: could not open the display :-(\n");
-		return 1;
-	}
+		Display * display = XOpenDisplay(NULL);
+		if (display == NULL)
+		{
+			fprintf(stderr, "dwmstatus: could not open the display :-(\n");
+			return 1;
+		}
 
-	/* every interval update the status */
-	for (;;sleep(UPDATE_INTERVAL))
-	{
-		char * time         = get_time();
-		Battery battery     = init_battery();
-		char * battery_time = get_nice_batt_time(battery->state, battery->seconds_remaining);
+		char *  mpd_info_str = get_mpd_info_str();
+		Battery battery      = init_battery();
+		char *  battery_time = get_nice_batt_time(battery->state, battery->seconds_remaining);
+		char *  time         = get_time();
 
-		sprintf(status, "%s | B: %d%% (%s) | %s", "music",
+		char status[100];
+		sprintf(status, "%s B: %d%% (%s) | %s",
+			mpd_info_str,
 			battery->percent,
 			battery_time,
 			time);
-
-		set_status(status);
-
-		free(time);
+		set_status(status, display);
+		
+		free(mpd_info_str);
 		free(battery);
 		free(battery_time);
+		free(time);
+		
+		XCloseDisplay(display);
 	}
 }
