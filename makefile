@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-Wall -g -std=c99 -pedantic-errors -D_GNU_SOURCE
-LDFLAGS=-l X11 -l mpdclient
+LDFLAGS=-l X11 -l mpdclient -l m
 
 dwmstatus: dwmstatus.o battery.o mpdinfo.o
 	$(CC) $(CFLAGS) $(LDFLAGS) dwmstatus.o battery.o mpdinfo.o -o dwmstatus

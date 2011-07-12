@@ -1,21 +1,16 @@
-/* dwmstatus
- * Author:      Thomas Preston
- * Description: This is basically a re-write of dwmstatus from the suckless.org
- *              website. I'm doing it my way so I understand everything and so
- *              I can get some much needed C practice. :-)
- */
 #include <stdio.h>
 #include <stdlib.h>
-#define __USE_BSD
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
+#include <math.h>
 #include <X11/Xlib.h>
+#include <mpd/client.h>
 
 #include "battery.h"
 #include "mpdinfo.h"
 
-#define UPDATE_INTERVAL 90
+#define UPDATE_INTERVAL 1
 
 static void set_status(char * status, Display * display)
 {
@@ -58,34 +53,33 @@ static char * get_month(int month)
 	}
 }
 
-static char * get_time(void)
+static char * get_time_str(void)
 {
 	time_t epoch_time = time(NULL);
-	struct tm * time = localtime(&epoch_time);
+	struct tm * time  = localtime(&epoch_time);
 	
-	char str_time[29]; /* 9day, 1sp, 2mday, 1sp, 9mon, 1sp, 5time, 1nullterm */
-	sprintf(str_time, "%s %d %s %d:%02d",
+	char * str_time;
+	asprintf(&str_time, "%s %d %s %d:%02d",
 		get_day(time->tm_wday),
 		time->tm_mday,
 		get_month(time->tm_mon),
 		time->tm_hour,
 		time->tm_min);
 	
-	return strdup(str_time);
+	return str_time;
 }
 
 static char * secs2min_str(int seconds)
 {
-	if (seconds <= 0) return "0";
+	if (seconds <= 0) return strdup("0");
 
 	int hours = seconds / 3600;
 	int seconds_after_hours = seconds % 3600;
 	int mins  = seconds_after_hours / 60;
 
-	/* 6 characters allows for three digit hours. That's some battery you have there... */
-	char timestring[7];
-	sprintf(timestring, "%d:%02d", hours, mins);
-	return strdup(timestring);
+	char * timestring;
+	asprintf(&timestring, "%d:%02d", hours, mins);
+	return timestring;
 }
 
 static char * get_nice_batt_time(enum chargestate state, int seconds_remaining)
@@ -100,8 +94,35 @@ static char * get_nice_batt_time(enum chargestate state, int seconds_remaining)
 			return secs2min_str(seconds_remaining);
 			break;
 		default:
-			return "??";
+			return strdup("??");
 	}
+}
+
+static char * get_battery_info_str()
+{
+	Battery battery = init_battery();
+	char *  battery_time = get_nice_batt_time(battery->state, battery->seconds_remaining);
+
+	char * battery_info_str;
+	asprintf(&battery_info_str, "B: %d%% (%s) |",
+		battery->percent,
+		battery_time);
+	
+	free(battery_time);
+	free(battery);
+
+	return battery_info_str;
+}
+
+static void free_mpd_info(MPDinfo mpd_info)
+{
+	if (mpd_info->artist != NULL)
+		free(mpd_info->artist);
+	
+	if (mpd_info->title != NULL)
+		free(mpd_info->title);
+	
+	free(mpd_info);
 }
 
 static char * get_playing_state_str(enum mpd_playing_state state)
@@ -120,61 +141,50 @@ static char * get_playing_state_str(enum mpd_playing_state state)
 	}
 }
 
-static char * get_mpd_info_str()
+static char * get_mpd_info_str(void)
 {
 	MPDinfo mpd_info = init_mpdinfo();
-
 	char * playing_state_str = get_playing_state_str(mpd_info->state);
+	
+	char * info_str;
+	if (mpd_info->state == stopped)
+		asprintf(&info_str, "[%s] |", playing_state_str);
+	else
+		asprintf(&info_str, "%s by %s [%s] |", mpd_info->title, mpd_info->artist, playing_state_str);
 
-	int size_of_info_str = 
-		strlen(mpd_info->title)   +
-		strlen(mpd_info->artist)  +
-		strlen(playing_state_str) +
-		+ 10;
-	
-	char * mpd_info_str = malloc(size_of_info_str);
-	sprintf(mpd_info_str, "%s by %s [%s] |",
-		mpd_info->title,
-		mpd_info->artist,
-		playing_state_str);
-	
+	free_mpd_info(mpd_info);
 	free(playing_state_str);
-	free(mpd_info->title);
-	free(mpd_info->artist);
-	free(mpd_info);
-
-	return mpd_info_str;
+	
+	return info_str;
 }
 
 int main(void)
 {
-	int index;
-	for (index = 0; index < 1; index++)//sleep(UPDATE_INTERVAL)) /* every interval update the status */
+	for (;;sleep(UPDATE_INTERVAL)) /* every interval update the status */
 	{
 		Display * display = XOpenDisplay(NULL);
 		if (display == NULL)
 		{
 			fprintf(stderr, "dwmstatus: could not open the display :-(\n");
-			return 1;
+			return -1;
 		}
 
-		char *  mpd_info_str = get_mpd_info_str();
-		Battery battery      = init_battery();
-		char *  battery_time = get_nice_batt_time(battery->state, battery->seconds_remaining);
-		char *  time         = get_time();
-
-		char status[100];
-		sprintf(status, "%s B: %d%% (%s) | %s",
+		char *  mpd_info_str     = get_mpd_info_str();
+		char *  battery_info_str = get_battery_info_str();
+		char *  time             = get_time_str();
+		
+		char * status;
+		asprintf(&status, "%s %s %s",
 			mpd_info_str,
-			battery->percent,
-			battery_time,
+			battery_info_str,
 			time);
+		
 		set_status(status, display);
 		
 		free(mpd_info_str);
-		free(battery);
-		free(battery_time);
+		free(battery_info_str);
 		free(time);
+		free(status);
 		
 		XCloseDisplay(display);
 	}

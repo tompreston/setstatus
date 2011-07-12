@@ -22,6 +22,10 @@ MPDinfo init_mpdinfo(void)
 	
 	/* connection was successful, make room for some data! */
 	struct mpd_info * mpd_information = malloc(sizeof(struct mpd_info));
+	mpd_information->state  = stopped;
+	mpd_information->artist = NULL;
+	mpd_information->title  = NULL;
+
 	
 	/* send commands to mpd */
 	mpd_command_list_begin(mpdconn, true);
