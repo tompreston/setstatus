@@ -1,0 +1,7 @@
+      Title: setstatus
+     Author: Thomas Preston
+Description: Sets the root window name to the currently playing
+             track, the amount of battery left and the time.
+             It's pretty much a rewrite of dwmstatus on the
+             suckless website. I wanted to do it my way. :-)
+    Install: To build, just type 'make setstatus'
