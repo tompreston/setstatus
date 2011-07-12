@@ -135,9 +135,11 @@ static char * get_playing_state_str(enum mpd_playing_state state)
 		case paused:
 			return strdup("paused");
 			break;
-		default:
+		case stopped:
 			return strdup("stopped");
 			break;
+		default:
+			return strdup("err");
 	}
 }
 
@@ -165,7 +167,7 @@ int main(void)
 		Display * display = XOpenDisplay(NULL);
 		if (display == NULL)
 		{
-			fprintf(stderr, "dwmstatus: could not open the display :-(\n");
+			fprintf(stderr, "setstatus: could not open the display :-(\n");
 			return -1;
 		}
 
