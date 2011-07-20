@@ -6,6 +6,7 @@
 #include <math.h>
 #include <X11/Xlib.h>
 #include <mpd/client.h>
+#include <pthread.h>
 
 #include "battery.h"
 #include "mpdinfo.h"
@@ -53,7 +54,7 @@ static char * get_month(int month)
 	}
 }
 
-static char * get_time_str(void)
+static void * get_time_str()
 {
 	time_t epoch_time = time(NULL);
 	struct tm * time  = localtime(&epoch_time);
@@ -98,7 +99,7 @@ static char * get_nice_batt_time(enum chargestate state, int seconds_remaining)
 	}
 }
 
-static char * get_battery_info_str()
+static void * get_battery_info_str()
 {
 	Battery battery = init_battery();
 	char *  battery_time = get_nice_batt_time(battery->state, battery->seconds_remaining);
@@ -143,7 +144,7 @@ static char * get_playing_state_str(enum mpd_playing_state state)
 	}
 }
 
-static char * get_mpd_info_str(void)
+static void * get_mpd_info_str()
 {
 	MPDinfo mpd_info = init_mpdinfo();
 	char * playing_state_str = get_playing_state_str(mpd_info->state);
@@ -171,21 +172,27 @@ int main(void)
 			return -1;
 		}
 
-		char *  mpd_info_str     = get_mpd_info_str();
-		char *  battery_info_str = get_battery_info_str();
-		char *  time             = get_time_str();
-		
+		pthread_t mpd_info_thread, battery_info_thread, time_thread;
+		pthread_create(&mpd_info_thread,     NULL, get_mpd_info_str,     NULL);
+		pthread_create(&battery_info_thread, NULL, get_battery_info_str, NULL);
+		pthread_create(&time_thread,         NULL, get_time_str,         NULL);
+
+		void * mpd_info_str, * battery_info_str, * time_str;
+		pthread_join(mpd_info_thread,     &mpd_info_str);
+		pthread_join(battery_info_thread, &battery_info_str);
+		pthread_join(time_thread,         &time_str);
+
 		char * status;
 		asprintf(&status, "%s %s %s",
-			mpd_info_str,
-			battery_info_str,
-			time);
+			(char *) mpd_info_str,
+			(char *) battery_info_str,
+			(char *) time_str);
 		
 		set_status(status, display);
 		
 		free(mpd_info_str);
 		free(battery_info_str);
-		free(time);
+		free(time_str);
 		free(status);
 		
 		XCloseDisplay(display);
