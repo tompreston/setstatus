@@ -102,13 +102,17 @@ static char * get_nice_batt_time(enum chargestate state, int seconds_remaining)
 static void * get_battery_info_str()
 {
 	Battery battery = init_battery();
+
+	if (battery == NULL)
+		return strdup("");
+
 	char *  battery_time = get_nice_batt_time(battery->state, battery->seconds_remaining);
 
 	char * battery_info_str;
 	asprintf(&battery_info_str, "B: %d%% (%s) |",
 		battery->percent,
 		battery_time);
-	
+
 	free(battery_time);
 	free(battery);
 
@@ -147,6 +151,10 @@ static char * get_playing_state_str(enum mpd_playing_state state)
 static void * get_mpd_info_str()
 {
 	MPDinfo mpd_info = init_mpdinfo();
+
+	if (mpd_info == NULL)
+		return strdup("");
+	
 	char * playing_state_str = get_playing_state_str(mpd_info->state);
 	
 	char * info_str;

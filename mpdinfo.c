@@ -9,13 +9,17 @@
 
 #include "mpdinfo.h"
 
+#undef DEBUG
+
 MPDinfo init_mpdinfo(void)
 {
 	/* connect to mpd */
 	struct mpd_connection * mpdconn = mpd_connection_new("localhost", 6600, 0);
 	if (mpd_connection_get_error(mpdconn) != MPD_ERROR_SUCCESS)
 	{
+		#ifdef DEBUG
 		fprintf(stderr, "%s\n", mpd_connection_get_error_message(mpdconn));
+		#endif
 		mpd_connection_free(mpdconn);
 		return NULL;
 	}
@@ -37,15 +41,19 @@ MPDinfo init_mpdinfo(void)
 	struct mpd_status * status = mpd_recv_status(mpdconn);
 	if (status == NULL)
 	{
+		#ifdef DEBUG
 		fprintf(stderr,"%s\n", mpd_connection_get_error_message(mpdconn));
+		#endif
 		mpd_connection_free(mpdconn);
 		free(mpd_information);
 		return NULL;
 	}
 	
+	#ifdef DEBUG
 	/* If we recieved the status, but there was still an error, print it */
 	if (mpd_status_get_error(status) != NULL)
 		fprintf(stderr, "error: %s\n", mpd_status_get_error(status));
+	#endif
 	
 	/* set the state */
 	if (mpd_status_get_state(status) == MPD_STATE_PLAY)
@@ -58,7 +66,9 @@ MPDinfo init_mpdinfo(void)
 	/* print any errors */
 	if (mpd_connection_get_error(mpdconn) != MPD_ERROR_SUCCESS)
 	{
+		#ifdef DEBUG
 		fprintf(stderr,"%s\n", mpd_connection_get_error_message(mpdconn));
+		#endif
 		mpd_connection_free(mpdconn);
 		free(mpd_information);
 		return NULL;
@@ -79,7 +89,9 @@ MPDinfo init_mpdinfo(void)
 	/* more error handling... */
 	if (mpd_connection_get_error(mpdconn) != MPD_ERROR_SUCCESS)
 	{
+		#ifdef DEBUG
 		fprintf(stderr,"%s\n", mpd_connection_get_error_message(mpdconn));
+		#endif
 		mpd_connection_free(mpdconn);
 		free(mpd_information);
 		return NULL;
@@ -88,7 +100,9 @@ MPDinfo init_mpdinfo(void)
 	/* ...this is not sexy code */
 	if (!mpd_response_finish(mpdconn))
 	{
+		#ifdef DEBUG
 		fprintf(stderr,"%s\n", mpd_connection_get_error_message(mpdconn));
+		#endif
 		mpd_connection_free(mpdconn);
 		free(mpd_information);
 		return NULL;
