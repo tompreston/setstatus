@@ -108,10 +108,21 @@ static void * get_battery_info_str()
 
 	char *  battery_time = get_nice_batt_time(battery->state, battery->seconds_remaining);
 
+	/* set the color of the battery */
+	const char normal_color = '';
+	char bat_color = normal_color;
+
+	if (battery->percent <= 5)
+		bat_color = '';
+	else if (battery->percent <= 10)
+		bat_color = '';
+
 	char * battery_info_str;
-	asprintf(&battery_info_str, "B: %d%% (%s) |",
+	asprintf(&battery_info_str, "%cB: %d%% (%s)%c|",
+		bat_color,
 		battery->percent,
-		battery_time);
+		battery_time,
+		normal_color);
 
 	free(battery_time);
 	free(battery);
@@ -191,7 +202,7 @@ int main(void)
 		pthread_join(time_thread,         &time_str);
 
 		char * status;
-		asprintf(&status, "%s %s %s",
+		asprintf(&status, "%s%s %s",
 			(char *) mpd_info_str,
 			(char *) battery_info_str,
 			(char *) time_str);
