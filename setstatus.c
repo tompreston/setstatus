@@ -106,7 +106,8 @@ static void * get_battery_info_str()
 	if (battery == NULL)
 		return strdup("");
 
-	char *  battery_time = get_nice_batt_time(battery->state, battery->seconds_remaining);
+	char *  battery_time =
+		get_nice_batt_time(battery->state, battery->seconds_remaining);
 
 	/* set the color of the battery */
 	const char normal_color = '';
@@ -172,7 +173,10 @@ static void * get_mpd_info_str()
 	if (mpd_info->state == stopped)
 		asprintf(&info_str, "[%s] |", playing_state_str);
 	else
-		asprintf(&info_str, "%s by %s [%s] |", mpd_info->title, mpd_info->artist, playing_state_str);
+		asprintf(&info_str, "%s by %s [%s] |",
+			mpd_info->title,
+			mpd_info->artist,
+			playing_state_str);
 
 	free_mpd_info(mpd_info);
 	free(playing_state_str);
@@ -182,7 +186,7 @@ static void * get_mpd_info_str()
 
 int main(void)
 {
-	for (;;sleep(UPDATE_INTERVAL)) /* every interval update the status */
+	for (;;sleep(UPDATE_INTERVAL))
 	{
 		Display * display = XOpenDisplay(NULL);
 		if (display == NULL)
