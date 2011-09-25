@@ -8,7 +8,6 @@
 #include <mpd/client.h>
 #include <pthread.h>
 
-#include "battery.h"
 #include "mpdinfo.h"
 
 #define UPDATE_INTERVAL 1
@@ -68,67 +67,6 @@ static void * get_time_str()
 		time->tm_min);
 	
 	return str_time;
-}
-
-static char * secs2min_str(int seconds)
-{
-	if (seconds <= 0) return strdup("0");
-
-	int hours = seconds / 3600;
-	int seconds_after_hours = seconds % 3600;
-	int mins  = seconds_after_hours / 60;
-
-	char * timestring;
-	asprintf(&timestring, "%d:%02d", hours, mins);
-	return timestring;
-}
-
-static char * get_nice_batt_time(enum chargestate state, int seconds_remaining)
-{
-	switch (state)
-	{
-		case charging:
-		case charged:
-			return strdup("AC"); /* because we are going to be freeing later */
-			break;
-		case discharging:
-			return secs2min_str(seconds_remaining);
-			break;
-		default:
-			return strdup("??");
-	}
-}
-
-static void * get_battery_info_str()
-{
-	Battery battery = init_battery();
-
-	if (battery == NULL)
-		return strdup("");
-
-	char *  battery_time =
-		get_nice_batt_time(battery->state, battery->seconds_remaining);
-
-	/* set the color of the battery */
-	const char normal_color = '';
-	char bat_color = normal_color;
-
-	if (battery->percent <= 5)
-		bat_color = '';
-	else if (battery->percent <= 10)
-		bat_color = '';
-
-	char * battery_info_str;
-	asprintf(&battery_info_str, "%cB: %d%% (%s)%c|",
-		bat_color,
-		battery->percent,
-		battery_time,
-		normal_color);
-
-	free(battery_time);
-	free(battery);
-
-	return battery_info_str;
 }
 
 static void free_mpd_info(MPDinfo mpd_info)
@@ -195,26 +133,22 @@ int main(void)
 			return -1;
 		}
 
-		pthread_t mpd_info_thread, battery_info_thread, time_thread;
+		pthread_t mpd_info_thread, time_thread;
 		pthread_create(&mpd_info_thread,     NULL, get_mpd_info_str,     NULL);
-		pthread_create(&battery_info_thread, NULL, get_battery_info_str, NULL);
 		pthread_create(&time_thread,         NULL, get_time_str,         NULL);
 
-		void * mpd_info_str, * battery_info_str, * time_str;
+		void * mpd_info_str, * time_str;
 		pthread_join(mpd_info_thread,     &mpd_info_str);
-		pthread_join(battery_info_thread, &battery_info_str);
 		pthread_join(time_thread,         &time_str);
 
 		char * status;
-		asprintf(&status, "%s%s %s",
+		asprintf(&status, "%s %s",
 			(char *) mpd_info_str,
-			(char *) battery_info_str,
 			(char *) time_str);
 		
 		set_status(status, display);
 		
 		free(mpd_info_str);
-		free(battery_info_str);
 		free(time_str);
 		free(status);
 		

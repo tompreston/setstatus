@@ -81,8 +81,18 @@ MPDinfo init_mpdinfo(void)
 	struct mpd_song * song = mpd_recv_song(mpdconn);
 	if (song != NULL)
 	{
-		mpd_information->artist = strdup(mpd_song_get_tag(song, MPD_TAG_ARTIST, 0));
-		mpd_information->title  = strdup(mpd_song_get_tag(song, MPD_TAG_TITLE,  0));
+		const char * artist = mpd_song_get_tag(song, MPD_TAG_ARTIST, 0);
+		if (artist == NULL)
+			mpd_information->artist = strdup("?");
+		else
+			mpd_information->artist = strdup(artist);
+
+		const char * title = mpd_song_get_tag(song, MPD_TAG_TITLE,  0);
+		if (title == NULL)
+			mpd_information->title = strdup("?");
+		else
+			mpd_information->title  = strdup(title);
+
 		mpd_song_free(song);
 	}
 	
